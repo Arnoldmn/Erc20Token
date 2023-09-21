@@ -8,4 +8,4 @@
     // SPDX-License-Identifier:MIT
     pragma solidity ^0.8.17;
 ```
-. At the beginning we have comments which show information on the license we are using and publishing the code under and also the version of <b>Solidity language </b> we are currently using.
+* At the beginning we have comments which show information on the license we are using and publishing the code under and also the version of <b>Solidity language </b> we are currently using.
