@@ -55,7 +55,25 @@ contract Erc20Token{
     require(_value <= allowed[_from][msg.sender], "Allowance exceeded");
 
     balances[_from] -= _value;
+    balances[_to] += _value;
+    allowed[_from][msg.sender] -= _value;
 
+    emit Transfer(_from, _to, _value);
+
+    return true;
+
+   }
+
+   function approve(address _spender, uint _value) public returns (bool) {
+        allowed[msg.sender][_spender] = _value;
+
+        emit Approval(msg.sender, _spender, _value);
+
+        return true;
+   }
+
+   function allowance(address _owner, address _spender) public view returns(uint) {
+    return allowed[_owner][_spender];
    }
 
 }
