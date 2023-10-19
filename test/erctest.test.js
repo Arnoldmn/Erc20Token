@@ -58,6 +58,12 @@ Contract('Erc20', (accouts) => {
     });
 
     it('should return correct allowance after approval', async () => {
-        const amount 
+        const amount = Web3.utils.toBN('1000000000000000000');
+
+        await erc20Instance.approve(accounts[2], amount, {from: accounts[0]});
+
+        const allowance = await erc20Instance.allowance(accounts[0], accounts[2]);
+
+        assert.equal(allowance.toString(), '1000000000000000000', 'Incorrect allowance');
     })
 })
