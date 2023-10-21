@@ -1,69 +1,70 @@
-const Erc20Token = require("Erc20Token");
+const { expect } = require("chai");
+const { ethers } = require("ethers");
 
-Contract('Erc20', (accouts) => {
-    let erc20Instance;
+describe("ERC20 Token Contract", function () {
+  let Erc20Token;
+  let erc20Token;
+  let owner;
+  let addr1;
+  let addr2;
 
-    before(async () => {
-        erc20Instance = await Erc20Token.deployed();
+  beforeEach(async function () {
+    Erc20Token = await ethers.getContractFactory("Erc20Token");
+    [owner, addr1, addr2] = await ethers.getSigners();
+    erc20Token = await Erc20Token.deploy("MyToken", "MTK", 18, ethers.utils.parseEther("1000000"));
+    await erc20Token.deployed();
+  });
 
-    });
+  it("Should deploy with correct initial values", async function () {
+    expect(await erc20Token.name()).to.equal("MyToken");
+    expect(await erc20Token.symbol()).to.equal("MTK");
+    expect(await erc20Token.decimals()).to.equal(18);
 
-    it('Should have the correct name, symbol, and decimal', async () => {
-        const name = await erc20Instance.name();
-        const symbol = await erc20Instance.symbol();
-        const decimals = await erc20Instance.decimals();
+    const totalSupply = await erc20Token.totalSupply();
+    expect(totalSupply).to.equal(ethers.utils.parseEther("1000000"));
 
-        assert.equal(name, 'YourToken', 'Incorrect name');
-        assert.equal(symbol,'SYM', 'Incorrect symbol');
-        assert.equal(decimals, 18, 'Incorrect decimals');
+    const ownerBalance = await erc20Token.balanceOf(owner.address);
+    expect(ownerBalance).to.equal(ethers.utils.parseEther("1000000"));
+  });
 
+  it("Should allow transfers between accounts", async function () {
+    const amount = ethers.utils.parseEther("1000");
 
-    });
+    await erc20Token.transfer(addr1.address, amount);
+    const addr1Balance = await erc20Token.balanceOf(addr1.address);
+    expect(addr1Balance).to.equal(amount);
 
-    it('should correctly mint initial supply to the deployer', async () => {
-        const totalSupply = await erc20Instance.totalSupply();
-        balanceOfDeployer = await erc20Instance.balanceOf(accouts[0]);
+    await erc20Token.connect(addr1).transfer(addr2.address, amount);
+    const addr2Balance = await erc20Token.balanceOf(addr2.address);
+    expect(addr2Balance).to.equal(amount);
+  });
 
-        assert.equal(totalSupply.toString(), '1000000000000000000000', 'Incorrect total supply');
-        assert.equal(balanceOfDeployer.toString(), '1000000000000000000000', 'Incorrect balance for deployer');
+  it("Should update balances after transfers", async function () {
+    const amount = ethers.utils.parseEther("1000");
 
-    });
+    await erc20Token.transfer(addr1.address, amount);
+    await erc20Token.connect(addr1).transfer(addr2.address, amount);
 
-    it('should transfer tokens correctly', async () => {
-        const amount = Web3.utils.toBN('1000000000000000000');
+    const ownerBalance = await erc20Token.balanceOf(owner.address);
+    const addr1Balance = await erc20Token.balanceOf(addr1.address);
+    const addr2Balance = await erc20Token.balanceOf(addr2.address);
 
-        await erc20Instance.approve(accounts[2], amount, { from: accounts[0] });
-        await erc20Instance.transferFrom(accounts[0], accounts[3], amount, { from: accounts[2] });
-    
-        const balanceOfSender = await erc20Instance.balanceOf(accounts[0]);
-        const balanceOfReceiver = await erc20Instance.balanceOf(accounts[3]);
+    expect(ownerBalance).to.equal(ethers.utils.parseEther("998000"));
+    expect(addr1Balance).to.equal(0);
+    expect(addr2Balance).to.equal(amount);
+  });
 
-        assert.equal(balanceOfSender.toString(), '999000000000000000000', 'Incorrect balance for sender');
-        assert.equal(balanceOfReceiver.toString(), '1000000000000000000', 'I')
-    });
+  it("Should emit Transfer event on successful transfer", async function () {
+    const amount = ethers.utils.parseEther("1000");
 
-    it('should approve and transferFrom tokens correctly', async () => {
-        const amount = web3.utils.toBN('1000000000000000000'); // 1 token
+    await expect(erc20Token.transfer(addr1.address, amount))
+      .to.emit(erc20Token, "Transfer")
+      .withArgs(owner.address, addr1.address, amount);
+  });
 
-        await erc20Instance.approve(accounts[2], amount, { from: accounts[0] });
-        await erc20Instance.transferFrom(accounts[0], accounts[3], amount, { from: accounts[2] });
+  it("Should not allow transfers exceeding balance", async function () {
+    const amount = ethers.utils.parseEther("2000000");
 
-        const balanceOfSender = await erc20Instance.balanceOf(accounts[0]);
-        const balanceOfReceiver = await erc20Instance.balanceOf(accounts[3]);
-
-        assert.equal(balanceOfSender.toString(), '998000000000000000000', 'Incorrect balance for sender');
-        assert.equal(balanceOfReceiver.toString(), '1000000000000000000', 'Incorrect balance for receiver');
-
-
-    });
-
-    it('should return correct allowance after approval', async () => {
-        const amount = Web3.utils.toBN('1000000000000000000');
-
-        await erc20Instance.approve(accounts[2], amount, {from: accounts[0]});
-
-        const allowance = await erc20Instance.allowance(accounts[0], accounts[2]);
-
-        assert.equal(allowance.toString(), '1000000000000000000', 'Incorrect allowance');
-    })
-})
+    await expect(erc20Token.transfer(addr1.address, amount)).to.be.revertedWith("Insufficient balance");
+  });
+});
